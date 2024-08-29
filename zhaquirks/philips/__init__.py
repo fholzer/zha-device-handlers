@@ -217,6 +217,7 @@ class PhilipsRemoteCluster(CustomCluster):
 
     @classmethod
     def generate_device_automation_triggers(cls, additional=None):
+        """Generate automation triggers based on device buttons and press-types."""
         triggers = {}
         for button in cls.BUTTONS.values():
             for press_type in cls.PRESS_TYPES.values():
