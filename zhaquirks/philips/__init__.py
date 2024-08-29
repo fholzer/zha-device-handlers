@@ -25,7 +25,6 @@ from zhaquirks.const import (
     QUADRUPLE_PRESS,
     QUINTUPLE_PRESS,
     SHORT_PRESS,
-    SHORT_RELEASE,
     TRIPLE_PRESS,
     TURN_OFF,
     TURN_ON,
@@ -127,7 +126,6 @@ class PhilipsRemoteCluster(CustomCluster):
     PRESS_TYPES = {
         0: SHORT_PRESS,
         1: LONG_PRESS,
-        2: SHORT_RELEASE,
         3: LONG_RELEASE,
         4: DOUBLE_PRESS,
         5: TRIPLE_PRESS,
@@ -166,7 +164,10 @@ class PhilipsRemoteCluster(CustomCluster):
         if button is None:
             return
 
-        press_type = self.PRESS_TYPES.get(args[2], args[2])
+        press_type = self.PRESS_TYPES.get(args[2])
+        if press_type is None:
+            return
+
         duration = args[4]
         _LOGGER.debug(
             "%s - handle_cluster_request button press type: [%s], duration: [%s]",
