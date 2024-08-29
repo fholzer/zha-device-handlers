@@ -156,12 +156,24 @@ class PhilipsRemoteCluster(CustomCluster):
         )
 
         button = self.BUTTONS.get(args[0])
+        _LOGGER.debug(
+            "%s - handle_cluster_request button id: [%s], button name: [%s]",
+            self.__class__.__name__,
+            args[0],
+            button,
+        )
         # Bail on unknown buttons. (This gets rid of dial button "presses")
         if button is None:
             return
 
         press_type = self.PRESS_TYPES.get(args[2], args[2])
         duration = args[4]
+        _LOGGER.debug(
+            "%s - handle_cluster_request button press type: [%s], duration: [%s]",
+            self.__class__.__name__,
+            press_type,
+            duration,
+        )
 
         event_args = {
             BUTTON: button,
