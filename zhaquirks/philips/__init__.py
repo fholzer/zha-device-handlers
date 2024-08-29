@@ -196,7 +196,7 @@ class PhilipsRemoteCluster(CustomCluster):
                 self.listener_event(ZHA_SEND_EVENT, action, event_args)
 
         # Derive Multiple Presses
-        if press_type == "press":
+        if press_type == SHORT_PRESS:
             self.button_press_queue.press(send_press_event, button)
         else:
             action = f"{button}_{press_type}"
