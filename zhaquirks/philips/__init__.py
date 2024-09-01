@@ -132,6 +132,7 @@ class PhilipsRemoteCluster(CustomCluster):
         6: QUADRUPLE_PRESS,
         7: QUINTUPLE_PRESS,
     }
+    SIMULATE_SHORT_RELEASE = None
 
     button_press_queue = ButtonPressQueue()
 
@@ -206,6 +207,22 @@ class PhilipsRemoteCluster(CustomCluster):
                 # Override PRESS_TYPE
                 event_args[PRESS_TYPE] = press_type
                 action = f"{button}_{press_type}"
+                _LOGGER.debug(
+                    "%s - send_press_event emitting action: [%s]",
+                    self.__class__.__name__,
+                    action,
+                )
+                self.listener_event(ZHA_SEND_EVENT, action, event_args)
+
+            # simulate short release event, if needed for this device type
+            if press_type == SHORT_PRESS and self.SIMULATE_SHORT_RELEASE is not None:
+                event_args[PRESS_TYPE] = self.SIMULATE_SHORT_RELEASE
+                action = f"{button}_{self.SIMULATE_SHORT_RELEASE}"
+                _LOGGER.debug(
+                    "%s - send_press_event emitting action: [%s]",
+                    self.__class__.__name__,
+                    action,
+                )
                 self.listener_event(ZHA_SEND_EVENT, action, event_args)
 
         # Derive Multiple Presses
@@ -222,6 +239,9 @@ class PhilipsRemoteCluster(CustomCluster):
         for button in cls.BUTTONS.values():
             for press_type in cls.PRESS_TYPES.values():
                 triggers[(press_type, button)] = {COMMAND: f"{button}_{press_type}"}
+            if cls.SIMULATE_SHORT_RELEASE is not None:
+                triggers[(cls.SIMULATE_SHORT_RELEASE, button)] = {COMMAND: f"{button}_{cls.SIMULATE_SHORT_RELEASE}"}
+
 
         if additional:
             triggers.update(additional)

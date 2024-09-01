@@ -20,11 +20,16 @@ from zhaquirks.const import (
     MODELS_INFO,
     OUTPUT_CLUSTERS,
     PROFILE_ID,
+    SHORT_RELEASE,
 )
 from zhaquirks.philips import SIGNIFY, PhilipsBasicCluster, PhilipsRemoteCluster
 
 DEVICE_SPECIFIC_UNKNOWN = 64512
 
+class PhilipsRWL022RemoteCluster(PhilipsRemoteCluster):
+    """Philips remote cluster for ROM001."""
+
+    SIMULATE_SHORT_RELEASE = SHORT_RELEASE
 
 class PhilipsRWL022(CustomDevice):
     """Philips RWL022 device."""
@@ -69,7 +74,7 @@ class PhilipsRWL022(CustomDevice):
                     PhilipsBasicCluster,
                     PowerConfiguration.cluster_id,
                     Identify.cluster_id,
-                    PhilipsRemoteCluster,
+                    PhilipsRWL022RemoteCluster,
                     LightLink.cluster_id,
                 ],
                 OUTPUT_CLUSTERS: [

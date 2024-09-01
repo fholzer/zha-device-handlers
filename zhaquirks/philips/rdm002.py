@@ -33,6 +33,7 @@ from zhaquirks.const import (
     PARAMS,
     PROFILE_ID,
     SHORT_PRESS,
+    SHORT_RELEASE,
 )
 from zhaquirks.philips import (
     PHILIPS,
@@ -67,6 +68,7 @@ class PhilipsRdm002RemoteCluster(PhilipsRemoteCluster):
         4: BUTTON_4,
     }
 
+    SIMULATE_SHORT_RELEASE = SHORT_RELEASE
 
 class PhilipsRDM002(CustomDevice):
     """Philips RDM002 device."""

@@ -21,6 +21,7 @@ from zhaquirks.const import (
     MODELS_INFO,
     OUTPUT_CLUSTERS,
     PROFILE_ID,
+    SHORT_RELEASE,
 )
 from zhaquirks.philips import (
     PHILIPS,
@@ -31,6 +32,11 @@ from zhaquirks.philips import (
 
 DEVICE_SPECIFIC_UNKNOWN = 64512
 
+
+class PhilipsRWLFirstGenRemoteCluster(PhilipsRemoteCluster):
+    """Philips remote cluster for ROM001."""
+
+    SIMULATE_SHORT_RELEASE = SHORT_RELEASE
 
 class PhilipsRWLFirstGen(CustomDevice):
     """Philips updated RWL020 and RWL021 devices."""
@@ -98,7 +104,7 @@ class PhilipsRWLFirstGen(CustomDevice):
                     PowerConfiguration.cluster_id,
                     Identify.cluster_id,
                     BinaryInput.cluster_id,
-                    PhilipsRemoteCluster,
+                    PhilipsRWLFirstGenRemoteCluster,
                 ],
                 OUTPUT_CLUSTERS: [Ota.cluster_id],
             },
@@ -106,7 +112,7 @@ class PhilipsRWLFirstGen(CustomDevice):
     }
 
     device_automation_triggers = (
-        PhilipsRemoteCluster.generate_device_automation_triggers()
+        PhilipsRWLFirstGenRemoteCluster.generate_device_automation_triggers()
     )
 
 
@@ -174,7 +180,7 @@ class PhilipsRWLFirstGen2(CustomDevice):
                     PowerConfiguration.cluster_id,
                     Identify.cluster_id,
                     BinaryInput.cluster_id,
-                    PhilipsRemoteCluster,
+                    PhilipsRWLFirstGenRemoteCluster,
                 ],
                 OUTPUT_CLUSTERS: [Ota.cluster_id],
             },
@@ -182,5 +188,5 @@ class PhilipsRWLFirstGen2(CustomDevice):
     }
 
     device_automation_triggers = (
-        PhilipsRemoteCluster.generate_device_automation_triggers()
+        PhilipsRWLFirstGenRemoteCluster.generate_device_automation_triggers()
     )

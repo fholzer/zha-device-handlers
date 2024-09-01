@@ -20,6 +20,7 @@ from zhaquirks.const import (
     MODELS_INFO,
     OUTPUT_CLUSTERS,
     PROFILE_ID,
+    SHORT_RELEASE,
     TURN_ON,
 )
 from zhaquirks.philips import (
@@ -38,6 +39,8 @@ class PhilipsRom001RemoteCluster(PhilipsRemoteCluster):
     BUTTONS = {
         1: TURN_ON,
     }
+
+    SIMULATE_SHORT_RELEASE = SHORT_RELEASE
 
 
 class PhilipsROM001(CustomDevice):
