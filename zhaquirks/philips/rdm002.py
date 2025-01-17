@@ -88,7 +88,12 @@ class PhilipsRdm002LevelControl(LevelControl):
             args,
         )
 
-        if method_name == "cluster_command" and args[2][2] != 8:
+        if (
+            method_name == "cluster_command"
+            and len(args) > 2
+            and len(args[2]) > 2
+            and args[2][2] != 8
+        ):
             _LOGGER.debug(
                 "%s::listener_event - forwarding level control method: %s - args: [%s]",
                 self.__class__.__name__,
