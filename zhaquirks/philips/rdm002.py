@@ -1,5 +1,9 @@
 """Signify RDM002 device."""
 
+import logging
+from typing import Any
+
+from zigpy import util
 from zigpy.profiles import zha
 from zigpy.quirks import CustomDevice
 from zigpy.zcl.clusters.general import (
@@ -42,6 +46,8 @@ from zhaquirks.philips import (
     PhilipsRemoteCluster,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 DIAL_TRIGGERS = {
     (SHORT_PRESS, DIM_UP): {
         COMMAND: COMMAND_STEP_ON_OFF,
@@ -67,6 +73,48 @@ class PhilipsRdm002RemoteCluster(PhilipsRemoteCluster):
         3: Button(BUTTON_3),
         4: Button(BUTTON_4),
     }
+
+
+class PhilipsRdm002LevelControl(LevelControl):
+    """Philips RDM002 LevelControl cluster."""
+
+    def listener_event(self, method_name: str, *args) -> list[Any | None]:
+        """Blackhole requests with transition_time=8, which originate from button long-presses."""
+
+        _LOGGER.debug(
+            "%s - listener_event: method: %s - args: [%s]",
+            self.__class__.__name__,
+            method_name,
+            args,
+        )
+
+        # example args we want to mute:
+        # [(224, 6, step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=255, transition_time=8))]
+        # transition_time=8 when step command is sent for long-press of button 1.
+        # transition_time=4 when dial is rotated.
+        if (
+            method_name == "cluster_command"
+            and len(args) > 2
+            and len(args[2]) > 2
+            and args[2][2] == 8
+        ):
+            _LOGGER.debug(
+                "%s::listener_event - muting level control method: %s - args: [%s]",
+                self.__class__.__name__,
+                method_name,
+                args,
+            )
+
+        else:
+            _LOGGER.debug(
+                "%s::listener_event - forwarding level control method: %s - args: [%s]",
+                self.__class__.__name__,
+                method_name,
+                args,
+            )
+            return util.ListenableMixin.listener_event(self, method_name, *args)
+
+        return []
 
 
 class PhilipsRDM002(CustomDevice):
@@ -121,7 +169,7 @@ class PhilipsRDM002(CustomDevice):
                     Identify.cluster_id,
                     Groups.cluster_id,
                     OnOff.cluster_id,
-                    LevelControl.cluster_id,
+                    PhilipsRdm002LevelControl.cluster_id,
                     Scenes.cluster_id,
                     LightLink.cluster_id,
                 ],
