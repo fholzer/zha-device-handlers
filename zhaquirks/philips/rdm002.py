@@ -1,7 +1,12 @@
 """Signify RDM002 device."""
 
+import logging
+from typing import Any, Optional, Union
+
 from zigpy.profiles import zha
 from zigpy.quirks import CustomDevice
+import zigpy.types as t
+from zigpy.zcl import foundation
 from zigpy.zcl.clusters.general import (
     Basic,
     Groups,
@@ -15,12 +20,14 @@ from zigpy.zcl.clusters.general import (
 from zigpy.zcl.clusters.lightlink import LightLink
 
 from zhaquirks.const import (
+    ARGS,
     BUTTON_1,
     BUTTON_2,
     BUTTON_3,
     BUTTON_4,
     CLUSTER_ID,
     COMMAND,
+    COMMAND_ID,
     COMMAND_STEP_ON_OFF,
     DEVICE_TYPE,
     DIM_DOWN,
@@ -33,6 +40,7 @@ from zhaquirks.const import (
     PARAMS,
     PROFILE_ID,
     SHORT_PRESS,
+    ZHA_SEND_EVENT,
 )
 from zhaquirks.philips import (
     PHILIPS,
@@ -42,16 +50,19 @@ from zhaquirks.philips import (
     PhilipsRemoteCluster,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
+
 DIAL_TRIGGERS = {
     (SHORT_PRESS, DIM_UP): {
         COMMAND: COMMAND_STEP_ON_OFF,
-        CLUSTER_ID: 8,
+        CLUSTER_ID: 0xFC00,
         ENDPOINT_ID: 1,
         PARAMS: {"step_mode": 0},
     },
     (SHORT_PRESS, DIM_DOWN): {
         COMMAND: COMMAND_STEP_ON_OFF,
-        CLUSTER_ID: 8,
+        CLUSTER_ID: 0xFC00,
         ENDPOINT_ID: 1,
         PARAMS: {"step_mode": 1},
     },
@@ -67,6 +78,45 @@ class PhilipsRdm002RemoteCluster(PhilipsRemoteCluster):
         3: Button(BUTTON_3),
         4: Button(BUTTON_4),
     }
+
+    def handle_cluster_request(
+        self,
+        hdr: foundation.ZCLHeader,
+        args: list[Any],
+        *,
+        dst_addressing: Optional[
+            Union[t.Addressing.Group, t.Addressing.IEEE, t.Addressing.NWK]
+        ] = None,
+    ):
+        """Handle the cluster command."""
+        buttonId = args[0]
+
+        if buttonId != 20:
+            return PhilipsRemoteCluster.handle_cluster_request(
+                self, hdr, args, dst_addressing=dst_addressing
+            )
+
+        event_args = {
+            COMMAND_ID: 0x06,
+            "step_mode": 1 if args[4] < 0 else 0,
+            "step_size": abs(args[4]),
+            "transition_time": 4,
+            ARGS: args,
+            # ARGS: {
+            #     "step_mode": 1 if args[4] < 0 else 0,
+            #     "step_size": abs(args[4]),
+            #     "transition_time": 4,
+            # },
+        }
+
+        _LOGGER.debug(
+            "%s - handle_cluster_request for dial; tsn: [%s] command id: %s - args: [%s]",
+            self.__class__.__name__,
+            hdr.tsn,
+            0x06,
+            args,
+        )
+        self.listener_event(ZHA_SEND_EVENT, COMMAND_STEP_ON_OFF, event_args)
 
 
 class PhilipsRDM002(CustomDevice):
@@ -121,7 +171,7 @@ class PhilipsRDM002(CustomDevice):
                     Identify.cluster_id,
                     Groups.cluster_id,
                     OnOff.cluster_id,
-                    LevelControl.cluster_id,
+                    0,
                     Scenes.cluster_id,
                     LightLink.cluster_id,
                 ],

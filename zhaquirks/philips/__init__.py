@@ -149,7 +149,7 @@ class PhilipsRemoteCluster(CustomCluster):
                 "param2": t.uint24_t,
                 "press_type": t.uint8_t,
                 "param4": t.uint8_t,
-                "param5": t.uint16_t,
+                "param5": t.int16s,
             },
             False,
             is_manufacturer_specific=True,
