@@ -3,7 +3,6 @@
 import logging
 from typing import Any
 
-from zigpy import util
 from zigpy.profiles import zha
 from zigpy.quirks import CustomCluster, CustomDevice
 from zigpy.zcl.clusters.general import (
@@ -112,7 +111,7 @@ class PhilipsRdm002LevelControl(CustomCluster, LevelControl):
                 method_name,
                 args,
             )
-            return util.ListenableMixin.listener_event(self, method_name, *args)
+            return super().listener_event(method_name, *args)
 
         return []
 
