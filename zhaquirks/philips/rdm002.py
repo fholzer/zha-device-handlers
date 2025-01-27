@@ -5,7 +5,7 @@ from typing import Any
 
 from zigpy import util
 from zigpy.profiles import zha
-from zigpy.quirks import CustomDevice
+from zigpy.quirks import CustomCluster, CustomDevice
 from zigpy.zcl.clusters.general import (
     Basic,
     Groups,
@@ -75,7 +75,7 @@ class PhilipsRdm002RemoteCluster(PhilipsRemoteCluster):
     }
 
 
-class PhilipsRdm002LevelControl(LevelControl):
+class PhilipsRdm002LevelControl(CustomCluster, LevelControl):
     """Philips RDM002 LevelControl cluster."""
 
     def listener_event(self, method_name: str, *args) -> list[Any | None]:
@@ -169,7 +169,7 @@ class PhilipsRDM002(CustomDevice):
                     Identify.cluster_id,
                     Groups.cluster_id,
                     OnOff.cluster_id,
-                    PhilipsRdm002LevelControl.cluster_id,
+                    PhilipsRdm002LevelControl,
                     Scenes.cluster_id,
                     LightLink.cluster_id,
                 ],
