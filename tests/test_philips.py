@@ -3,6 +3,8 @@
 from unittest import mock
 
 import pytest
+from zigpy.quirks import CustomEndpoint
+from zigpy.zcl import Cluster
 from zigpy.zcl.clusters.general import OnOff
 from zigpy.zcl.foundation import ZCLHeader
 
@@ -794,3 +796,137 @@ def test_PhilipsRemoteCluster_multi_button_press(
 
     for i, expected_action in enumerate(expected_actions):
         assert remote_listener.zha_send_event.call_args_list[i][0][0] == expected_action
+
+
+def listen_to_all(device) -> mock.MagicMock:
+    """Add a mock listener to all clusters of all endpoints of a device."""
+
+    listener = mock.MagicMock()
+
+    for endpoint in device.endpoints.values():
+        if not isinstance(endpoint, CustomEndpoint):
+            continue
+
+        for cluster in endpoint.in_clusters.values():
+            if isinstance(cluster, Cluster):
+                cluster.add_listener(listener)
+
+        for cluster in endpoint.out_clusters.values():
+            if isinstance(cluster, Cluster):
+                cluster.add_listener(listener)
+
+    return listener
+
+
+def test_RDM002_no_levelcontrol_on_long_press(zigpy_device_from_quirk):
+    """Button long-presses shouldn't trigger LevelControl events."""
+
+    device = zigpy_device_from_quirk(PhilipsRDM002)
+    listener = listen_to_all(device)
+
+    # All below messages are triggered when long pressing button 1 for ~1.5 seconds
+
+    # Received ZCL frame: b'\x1d\x0b\x10\xdf\x00\x01\x00\x000\x00!\x00\x00'
+    # Decoded ZCL frame header: ZCLHeader(frame_control=FrameControl<0x1D>(frame_type=<FrameType.CLUSTER_COMMAND: 1>, is_manufacturer_specific=True, direction=<Direction.Server_to_Client: 1>, disable_default_response=1, reserved=0, *is_cluster=True, *is_general=False), manufacturer=4107, tsn=223, command_id=0, *direction=<Direction.Server_to_Client: 1>)
+    # Decoded ZCL frame: PhilipsRdm002RemoteCluster:notification(button=1, param2=3145728, press_type=0, param4=33, param5=0)
+    # Received command 0x00 (TSN 223): notification(button=1, param2=3145728, press_type=0, param4=33, param5=0)
+    # PhilipsRdm002RemoteCluster - handle_cluster_request tsn: [223] command id: 0 - args: [notification(button=1, param2=3145728, press_type=0, param4=33, param5=0)]
+    # PhilipsRdm002RemoteCluster - handle_cluster_request button id: [1], button name: [<Button id=button_1, trigger=button_1, action=button_1>]
+    # PhilipsRdm002RemoteCluster - handle_cluster_request unknown button press type: [None]
+    hdr, args = (
+        device.endpoints[1]
+        .in_clusters[0xFC00]
+        .deserialize(b"\x1d\x0b\x10\xdf\x00\x01\x00\x000\x00!\x00\x00")
+    )
+    device.endpoints[1].in_clusters[0xFC00].handle_message(hdr, args)
+
+    # Received ZCL frame: b'\x01\xe0\x06\x01\xff\x08\x00'
+    # Decoded ZCL frame header: ZCLHeader(frame_control=FrameControl<0x01>(frame_type=<FrameType.CLUSTER_COMMAND: 1>, is_manufacturer_specific=0, direction=<Direction.Client_to_Server: 0>, disable_default_response=0, reserved=0, *is_cluster=True, *is_general=False), tsn=224, command_id=6, *direction=<Direction.Client_to_Server: 0>)
+    # Decoded ZCL frame: PhilipsRdm002LevelControl:step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=255, transition_time=8)
+    # Received command 0x06 (TSN 224): step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=255, transition_time=8)
+    # No explicit handler for cluster command 0x06: step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=255, transition_time=8)
+    # PhilipsRdm002LevelControl - listener_event: method: cluster_command - args: [(224, 6, step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=255, transition_time=8))]
+    # PhilipsRdm002LevelControl::listener_event - muting level control method: cluster_command - args: [(224, 6, step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=255, transition_time=8))]
+    hdr, args = (
+        device.endpoints[1]
+        .out_clusters[0x0008]
+        .deserialize(b"\x01\xe0\x06\x01\xff\x08\x00")
+    )
+    device.endpoints[1].out_clusters[0x0008].handle_message(hdr, args)
+
+    # Received ZCL frame: b'\x1d\x0b\x10\xe1\x00\x01\x00\x000\x01!\x08\x00'
+    # Decoded ZCL frame header: ZCLHeader(frame_control=FrameControl<0x1D>(frame_type=<FrameType.CLUSTER_COMMAND: 1>, is_manufacturer_specific=True, direction=<Direction.Server_to_Client: 1>, disable_default_response=1, reserved=0, *is_cluster=True, *is_general=False), manufacturer=4107, tsn=225, command_id=0, *direction=<Direction.Server_to_Client: 1>)
+    # Decoded ZCL frame: PhilipsRdm002RemoteCluster:notification(button=1, param2=3145728, press_type=1, param4=33, param5=8)
+    # Received command 0x00 (TSN 225): notification(button=1, param2=3145728, press_type=1, param4=33, param5=8)
+    # PhilipsRdm002RemoteCluster - handle_cluster_request tsn: [225] command id: 0 - args: [notification(button=1, param2=3145728, press_type=1, param4=33, param5=8)]
+    # PhilipsRdm002RemoteCluster - handle_cluster_request button id: [1], button name: [<Button id=button_1, trigger=button_1, action=button_1>]
+    # PhilipsRdm002RemoteCluster - handle_cluster_request button press type: [<PressType name=remote_button_long_press, action=hold, trigger=remote_button_long_press, arg=hold>], duration: [8]
+    hdr, args = (
+        device.endpoints[1]
+        .in_clusters[0xFC00]
+        .deserialize(b"\x1d\x0b\x10\xe1\x00\x01\x00\x000\x01!\x08\x00")
+    )
+    device.endpoints[1].in_clusters[0xFC00].handle_message(hdr, args)
+
+    # Received ZCL frame: b'\x1d\x0b\x10\xe2\x00\x01\x00\x000\x03!\n\x00'
+    # Decoded ZCL frame header: ZCLHeader(frame_control=FrameControl<0x1D>(frame_type=<FrameType.CLUSTER_COMMAND: 1>, is_manufacturer_specific=True, direction=<Direction.Server_to_Client: 1>, disable_default_response=1, reserved=0, *is_cluster=True, *is_general=False), manufacturer=4107, tsn=226, command_id=0, *direction=<Direction.Server_to_Client: 1>)
+    # Decoded ZCL frame: PhilipsRdm002RemoteCluster:notification(button=1, param2=3145728, press_type=3, param4=33, param5=10)
+    # Received command 0x00 (TSN 226): notification(button=1, param2=3145728, press_type=3, param4=33, param5=10)
+    # PhilipsRdm002RemoteCluster - handle_cluster_request tsn: [226] command id: 0 - args: [notification(button=1, param2=3145728, press_type=3, param4=33, param5=10)]
+    # PhilipsRdm002RemoteCluster - handle_cluster_request button id: [1], button name: [<Button id=button_1, trigger=button_1, action=button_1>]
+    # PhilipsRdm002RemoteCluster - handle_cluster_request button press type: [<PressType name=remote_button_long_release, action=long_release, trigger=remote_button_long_release, arg=long_release>], duration: [10]
+    hdr, args = (
+        device.endpoints[1]
+        .in_clusters[0xFC00]
+        .deserialize(b"\x1d\x0b\x10\xe2\x00\x01\x00\x000\x03!\n\x00")
+    )
+    device.endpoints[1].in_clusters[0xFC00].handle_message(hdr, args)
+
+    # we emit those from PhilipsRdm002RemoteCluster. One hold, one long_press_release event.
+    assert listener.zha_send_event.call_count == 2
+
+    # one for each frame received, except for the one we balckhole, so 4 - 1
+    assert listener.cluster_command.call_count == 3
+
+
+def test_RDM002_levelcontrol_on_dial_rotary_event(zigpy_device_from_quirk):
+    """Dial rotary events shouldn't be muted by PhilipsRdm002LevelControl."""
+
+    device = zigpy_device_from_quirk(PhilipsRDM002)
+    listener = listen_to_all(device)
+
+    # All below messages are triggered when quickly rotating the dial counterclockwise
+
+    # Received ZCL frame: b'\x01\xe7\x06\x01D\x04\x00'
+    # Decoded ZCL frame header: ZCLHeader(frame_control=FrameControl<0x01>(frame_type=<FrameType.CLUSTER_COMMAND: 1>, is_manufacturer_specific=0, direction=<Direction.Client_to_Server: 0>, disable_default_response=0, reserved=0, *is_cluster=True, *is_general=False), tsn=231, command_id=6, *direction=<Direction.Client_to_Server: 0>)
+    # Decoded ZCL frame: PhilipsRdm002LevelControl:step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=68, transition_time=4)
+    # Received command 0x06 (TSN 231): step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=68, transition_time=4)
+    # No explicit handler for cluster command 0x06: step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=68, transition_time=4)
+    # PhilipsRdm002LevelControl - listener_event: method: cluster_command - args: [(231, 6, step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=68, transition_time=4))]
+    # PhilipsRdm002LevelControl::listener_event - forwarding level control method: cluster_command - args: [(231, 6, step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=68, transition_time=4))]
+    hdr, args = (
+        device.endpoints[1]
+        .out_clusters[0x0008]
+        .deserialize(b"\x01\xe7\x06\x01D\x04\x00")
+    )
+    device.endpoints[1].out_clusters[0x0008].handle_message(hdr, args)
+
+    # Received ZCL frame: b'\x1d\x0b\x10\xe8\x00\x14\x00\x010\x01)Z\xff!d\x00)Z\xff!d\x00)Z\xff!\x90\x01'
+    # Decoded ZCL frame header: ZCLHeader(frame_control=FrameControl<0x1D>(frame_type=<FrameType.CLUSTER_COMMAND: 1>, is_manufacturer_specific=True, direction=<Direction.Server_to_Client: 1>, disable_default_response=1, reserved=0, *is_cluster=True, *is_general=False), manufacturer=4107, tsn=232, command_id=0, *direction=<Direction.Server_to_Client: 1>)
+    # Decoded ZCL frame: PhilipsRdm002RemoteCluster:notification(button=20, param2=3145984, press_type=1, param4=41, param5=65370)
+    # Data remains after deserializing ZCL frame: b'!d\x00)Z\xff!d\x00)Z\xff!\x90\x01'
+    # Received command 0x00 (TSN 232): notification(button=20, param2=3145984, press_type=1, param4=41, param5=65370)
+    # PhilipsRdm002RemoteCluster - handle_cluster_request tsn: [232] command id: 0 - args: [notification(button=20, param2=3145984, press_type=1, param4=41, param5=65370)]
+    # PhilipsRdm002RemoteCluster - handle_cluster_request unknown button id [20]
+    hdr, args = (
+        device.endpoints[1]
+        .in_clusters[0xFC00]
+        .deserialize(
+            b"\x1d\x0b\x10\xe8\x00\x14\x00\x010\x01)Z\xff!d\x00)Z\xff!d\x00)Z\xff!\x90\x01"
+        )
+    )
+    device.endpoints[1].in_clusters[0xFC00].handle_message(hdr, args)
+
+    # These call counts is the same, regardless of whether PhilipsRdm002LevelControl is used or not.
+    assert listener.zha_send_event.call_count == 0
+    assert listener.cluster_command.call_count == 2
