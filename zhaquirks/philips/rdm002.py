@@ -80,13 +80,6 @@ class PhilipsRdm002LevelControl(CustomCluster, LevelControl):
     def listener_event(self, method_name: str, *args) -> list[Any | None]:
         """Blackhole requests with transition_time=8, which originate from button long-presses."""
 
-        _LOGGER.debug(
-            "%s - listener_event: method: %s - args: [%s]",
-            self.__class__.__name__,
-            method_name,
-            args,
-        )
-
         # example args we want to mute:
         # [(224, 6, step_with_on_off(step_mode=<StepMode.Down: 1>, step_size=255, transition_time=8))]
         # transition_time=8 when step command is sent for long-press of button 1.
@@ -103,17 +96,9 @@ class PhilipsRdm002LevelControl(CustomCluster, LevelControl):
                 method_name,
                 args,
             )
+            return []
 
-        else:
-            _LOGGER.debug(
-                "%s::listener_event - forwarding level control method: %s - args: [%s]",
-                self.__class__.__name__,
-                method_name,
-                args,
-            )
-            return super().listener_event(method_name, *args)
-
-        return []
+        return super().listener_event(method_name, *args)
 
 
 class PhilipsRDM002(CustomDevice):
